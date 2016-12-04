@@ -14,8 +14,7 @@ import csv
 # ==================================================
 
 # Data Parameters
-tf.flags.DEFINE_string("positive_data_file", "./data/rt-polaritydata/rt-polarity.pos", "Data source for the positive data.")
-tf.flags.DEFINE_string("negative_data_file", "./data/rt-polaritydata/rt-polarity.neg", "Data source for the positive data.")
+tf.flags.DEFINE_string("test_data_file", "test.tsv", "Test data.")
 
 # Eval Parameters
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
@@ -36,11 +35,13 @@ print("")
 
 # CHANGE THIS: Load data. Load your own data here
 if FLAGS.eval_train:
-    x_raw, y_test = data_helpers.load_data_and_labels(FLAGS.positive_data_file, FLAGS.negative_data_file)
+    x_raw, y_test = data_helpers.load_data_and_labels(FLAGS.test_data_file)
     y_test = np.argmax(y_test, axis=1)
 else:
-    x_raw = ["a masterpiece four years in the making", "everything is off."]
-    y_test = [1, 0]
+    datapoints = data_helpers.load_datapoints(FLAGS.test_data_file)
+    x_raw = data_helpers.extract_phrases_in_datapoints(datapoints)
+    x_phraseids = data_helpers.extract_phraseids_in_datapoints(datapoints)
+    y_test = None
 
 # Map data into vocabulary
 vocab_path = os.path.join(FLAGS.checkpoint_dir, "..", "vocab")
@@ -93,3 +94,12 @@ out_path = os.path.join(FLAGS.checkpoint_dir, "..", "prediction.csv")
 print("Saving evaluation to {0}".format(out_path))
 with open(out_path, 'w') as f:
     csv.writer(f).writerows(predictions_human_readable)
+
+if y_test is None:
+    predictions_human_readable = np.column_stack((np.array(x_phraseids), all_predictions))
+    out_path = os.path.join("kaggle-prediction.csv")
+    print("Saving Kaggle format evaluation to {0}".format(out_path))
+    with open(out_path, 'w') as f:
+        csvwriter = csv.writer(f)
+        csvwriter.writerow(['PhraseId','Sentiment'])
+        csvwriter.writerows(predictions_human_readable)

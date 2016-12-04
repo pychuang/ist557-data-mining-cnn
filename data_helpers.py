@@ -1,7 +1,25 @@
+import csv
 import numpy as np
 import re
 import itertools
+
 from collections import Counter
+from collections import namedtuple
+
+
+DataPoint = namedtuple('DataPoint', ['PhraseId', 'SentenceId', 'Phrase', 'Sentiment'])
+
+
+def load_datapoints(data_file):
+    datapoints = []
+    with open(data_file) as f:
+        reader = csv.DictReader(f, delimiter='\t')
+        for row in reader:
+            if 'Sentiment' not in row:
+                row['Sentiment'] = None
+            dp = DataPoint(**row)
+            datapoints.append(dp)
+    return datapoints
 
 
 def clean_str(string):
@@ -25,24 +43,34 @@ def clean_str(string):
     return string.strip().lower()
 
 
-def load_data_and_labels(positive_data_file, negative_data_file):
+def extract_phrases_in_datapoints(datapoints):
+    x_text = [dp.Phrase for dp in datapoints]
+    return [clean_str(sent) for sent in x_text]
+
+
+def extract_phraseids_in_datapoints(datapoints):
+    return [dp.PhraseId for dp in datapoints]
+
+
+def load_data_and_labels(data_file):
     """
     Loads MR polarity data from files, splits the data into words and generates labels.
     Returns split sentences and labels.
     """
     # Load data from files
-    positive_examples = list(open(positive_data_file, "r").readlines())
-    positive_examples = [s.strip() for s in positive_examples]
-    negative_examples = list(open(negative_data_file, "r").readlines())
-    negative_examples = [s.strip() for s in negative_examples]
-    # Split by words
-    x_text = positive_examples + negative_examples
-    x_text = [clean_str(sent) for sent in x_text]
-    # Generate labels
-    positive_labels = [[0, 1] for _ in positive_examples]
-    negative_labels = [[1, 0] for _ in negative_examples]
-    y = np.concatenate([positive_labels, negative_labels], 0)
-    return [x_text, y]
+    datapoints = load_datapoints(data_file)
+    x_text = extract_phrases_in_datapoints(datapoints)
+
+    y = [int(dp.Sentiment) for dp in datapoints]
+
+    def one_hot(i):
+        return [0] * i + [1] + [0] * (4-i)
+
+    y_vector = []
+    for sentiment in y:
+        y_vector.append(one_hot(sentiment))
+
+    return [x_text, np.array(y_vector)]
 
 
 def batch_iter(data, batch_size, num_epochs, shuffle=True):
