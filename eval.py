@@ -96,7 +96,7 @@ with open(out_path, 'w') as f:
     csv.writer(f).writerows(predictions_human_readable)
 
 if y_test is None:
-    predictions_human_readable = np.column_stack((np.array(x_phraseids), all_predictions))
+    predictions_human_readable = np.column_stack((np.array(x_phraseids), [int(p) for p in all_predictions]))
     out_path = os.path.join("kaggle-prediction.csv")
     print("Saving Kaggle format evaluation to {0}".format(out_path))
     with open(out_path, 'w') as f:
